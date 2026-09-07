@@ -1,0 +1,67 @@
+#!/bin/bash
+
+set -e
+
+JOURNAL_DIR="$HOME/journal"
+ENTRIES_DIR="$JOURNAL_DIR/entries"
+
+mkdir -p "$ENTRIES_DIR"
+
+cd "$JOURNAL_DIR"
+
+DATE_FILE=$(date +%Y-%m-%d)
+DATE_PRETTY=$(date +"%B %-d, %Y")
+ENTRY_FILE="$ENTRIES_DIR/$DATE_FILE.html"
+TMP_FILE="/tmp/journal-entry.txt"
+
+if [ -f "$ENTRY_FILE" ]; then
+echo "An entry for today already exists:"
+echo "$ENTRY_FILE"
+exit 1
+fi
+
+echo "Write your journal entry, then save and close Mousepad."
+mousepad "$TMP_FILE"
+
+if [ ! -s "$TMP_FILE" ]; then
+echo "Entry was empty. Nothing saved."
+rm -f "$TMP_FILE"
+exit 0
+fi
+
+ENTRY_TEXT=$(cat "$TMP_FILE")
+
+cat > "$ENTRY_FILE" <<EOF
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>$DATE_PRETTY</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<p><a href="../index.html">← Back to journal</a></p>
+
+<h1>$DATE_PRETTY</h1>
+
+<div class="entry">
+$(sed 's/$/<br>/' "$TMP_FILE")
+</div>
+
+</body>
+</html>
+EOF
+
+LINK="<p><a href=\"entries/$DATE_FILE.html\">$DATE_PRETTY</a></p>"
+
+sed -i "/<hr>/a $LINK" index.html
+
+rm -f "$TMP_FILE"
+
+git add .
+git commit -m "Journal entry: $DATE_PRETTY"
+git push
+
+echo
+echo "Journal entry published."
